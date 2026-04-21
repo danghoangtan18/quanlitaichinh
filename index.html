@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ví Cá Nhân — Quản lý tài chính</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --surface2: #F0EDE6;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1A1814;
+  --text2: #6B6760;
+  --text3: #A8A49E;
+  --green: #2D6A4F;
+  --green-bg: #EAF4EE;
+  --red: #A02C2C;
+  --red-bg: #FAEBEB;
+  --amber: #7A4F1A;
+  --amber-bg: #FBF0DC;
+  --blue: #1A4A7A;
+  --blue-bg: #E8F0FA;
+  --accent: #2D6A4F;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; padding-bottom: 70px; }
+
+/* LAYOUT */
+.layout { display: flex; min-height: 100vh; opacity: 0; pointer-events: none; transition: opacity 0.5s; }
+.layout.unlocked { opacity: 1; pointer-events: auto; }
+.sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 10; }
+.main { margin-left: 220px; padding: 2rem; flex: 1; max-width: calc(100vw - 220px); }
+
+/* BOTTOM NAV (MOBILE) */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: none; justify-content: space-around; padding: 8px 0; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+.nav-tab { background: none; border: none; color: var(--text3); display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 9px; cursor: pointer; transition: 0.2s; flex: 1; min-width: 0; }
+.nav-tab.active { color: var(--accent); font-weight: 600; }
+.nav-tab svg { width: 18px; height: 18px; }
+
+/* TOAST NOTIFICATION */
+#toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast { background: var(--surface); color: var(--text); padding: 12px 24px; border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; animation: toastIn 0.3s ease-out forwards; border: 1px solid var(--border); pointer-events: auto; }
+.toast.success { border-left: 4px solid var(--green); }
+.toast.error { border-left: 4px solid var(--red); }
+@keyframes toastIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.toast.fade-out { animation: toastOut 0.3s ease-in forwards; }
+@keyframes toastOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-20px); opacity: 0; } }
+
+/* LOGIN OVERLAY */
+#login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 2rem; }
+.login-box { background: var(--surface); padding: 2.5rem; border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center; }
+.login-logo { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+.login-sub { font-size: 14px; color: var(--text3); margin-bottom: 2rem; }
+
+/* SIDEBAR */
+.logo { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.logo-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--text); }
+.logo-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.nav-section { padding: 0.5rem 1rem; }
+.nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); padding: 0 0.5rem; margin-bottom: 4px; font-weight: 500; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text2); font-size: 14px; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--green-bg); color: var(--green); font-weight: 500; }
+.nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.sidebar-footer { margin-top: auto; padding: 1rem 1.5rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); display: flex; flex-direction: column; gap: 8px; }
+
+/* SYNC STATUS */
+.sync-status { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+.sync-dot.online { background: #2D6A4F; box-shadow: 0 0 5px var(--green); }
+.sync-dot.syncing { background: #7A4F1A; animation: syncPulse 1s infinite; }
+.sync-dot.error { background: #A02C2C; }
+@keyframes syncPulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+/* PAGE HEADER */
+.page-header { margin-bottom: 1.5rem; }
+.page-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 600; color: var(--text); }
+.page-sub { font-size: 14px; color: var(--text2); margin-top: 2px; }
+
+/* CARDS */
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.25rem; }
+.card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* METRICS */
+.metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.metric-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.25rem; }
+.metric-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.metric-value { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 500; }
+.metric-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.metric-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+/* GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+
+/* FORM */
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.form-label { font-size: 13px; color: var(--text2); font-weight: 500; }
+.form-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border 0.15s; }
+.form-input:focus { border-color: var(--accent); }
+.form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.btn { padding: 9px 20px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #245c43; }
+.btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.btn-outline:hover { background: var(--surface2); }
+.btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; border: 1px solid var(--border2); background: transparent; color: var(--text2); transition: all 0.12s; }
+.btn-sm:hover { background: var(--surface2); }
+.btn-danger-sm { color: var(--red); border-color: rgba(160,44,44,0.25); }
+.btn-danger-sm:hover { background: var(--red-bg); }
+.btn-success-sm { color: var(--green); border-color: rgba(45,106,79,0.25); }
+.btn-success-sm:hover { background: var(--green-bg); }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+/* TRANSACTION LIST */
+.tx-list { list-style: none; }
+.tx-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.tx-item:last-child { border-bottom: none; }
+.tx-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-meta { font-size: 12px; color: var(--text3); }
+.tx-amount { font-size: 15px; font-weight: 500; flex-shrink: 0; }
+
+/* BADGE */
+.badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+.badge-income { background: var(--green-bg); color: var(--green); }
+.badge-expense { background: var(--red-bg); color: var(--red); }
+.badge-owe { background: var(--red-bg); color: var(--red); }
+.badge-lend { background: var(--green-bg); color: var(--green); }
+.badge-done { background: var(--surface2); color: var(--text3); }
+.badge-overdue { background: var(--amber-bg); color: var(--amber); }
+
+/* PROGRESS */
+.prog-wrap { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.prog-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+/* DEBT CARD */
+.debt-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 12px; }
+.debt-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.debt-name { font-size: 15px; font-weight: 500; }
+.debt-person { font-size: 13px; color: var(--text3); margin-top: 2px; }
+.debt-amounts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+.debt-amt-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+.debt-amt-val { font-size: 14px; font-weight: 500; margin-top: 2px; }
+.debt-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.debt-meta { font-size: 12px; color: var(--text3); }
+.debt-actions { display: flex; gap: 6px; }
+
+/* BUDGET */
+.budget-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.budget-row:last-child { border-bottom: none; }
+.budget-cat { font-size: 14px; width: 130px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.budget-track { flex: 1; }
+.budget-nums { font-size: 12px; color: var(--text3); text-align: right; min-width: 140px; flex-shrink: 0; }
+
+/* SAVING CARD (NEW) */
+.saving-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 12px; }
+.saving-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.saving-title { font-size: 15px; font-weight: 600; }
+.saving-stats { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+
+/* MONTH NAV */
+.month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; }
+.month-nav span { font-size: 16px; font-weight: 500; font-family: 'Playfair Display', serif; }
+.month-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; cursor: pointer; font-size: 16px; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+.month-btn:hover { background: var(--surface2); }
+
+/* FILTER */
+.filter-row { display: flex; gap: 8px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+.filter-row .form-input { width: auto; padding: 7px 20px; font-size: 13px; min-width: 110px; }
+#search-tx { min-width: 200px; flex: 1; }
+
+/* TOTAL SUMMARY */
+.filter-summary { padding: 10px 14px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 13px; font-weight: 500; color: var(--accent); display: none; }
+
+/* PAYMENT HISTORY */
+.pay-list { list-style: none; }
+.pay-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.pay-item:last-child { border-bottom: none; }
+
+/* MODAL */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; width: 420px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin-bottom: 1.25rem; }
+
+/* SECTION */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+/* TABS (sub) */
+.sub-tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; }
+.sub-tab { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: transparent; color: var(--text2); font-family: 'DM Sans', sans-serif; transition: all 0.12s; }
+.sub-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* CHART */
+.chart-wrap { position: relative; height: 220px; }
+.chart-wrap-lg { position: relative; height: 260px; }
+
+/* EMPTY */
+.empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 14px; }
+
+/* OVERVIEW SUMMARY ROW */
+.summary-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.summary-row:last-child { border-bottom: none; }
+
+/* SCROLLABLE DEBT LIST */
+.scroll-list { max-height: 340px; overflow-y: auto; }
+.scroll-list::-webkit-scrollbar { width: 4px; }
+.scroll-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* NET WORTH BAR */
+.nw-bar { height: 10px; border-radius: 5px; background: var(--surface2); overflow: hidden; margin: 8px 0; display: flex; }
+.nw-seg { height: 100%; transition: width 0.4s; }
+
+/* NOTIFICATION DOT */
+.notif-dot { display: inline-block; width: 7px; height: 7px; background: var(--red); border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+
+/* LEGEND */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+  body { padding-bottom: 80px; }
+  .sidebar { display: none; }
+  .bottom-nav { display: flex; }
+  .main { margin-left: 0; max-width: 100vw; padding: 1.25rem; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row-3 { grid-template-columns: 1fr 1fr; }
+  .debt-amounts { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- SCREEN KHOA BẢO MẬT -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Ví Cá Nhân</div>
+    <p class="login-sub">Vui lòng nhập mã bảo mật để truy cập</p>
+    <div class="form-group" style="margin-bottom: 20px;">
+      <input type="password" id="access-token" class="form-input" placeholder="Nhập mã bí mật..." style="text-align: center; font-size: 18px; letter-spacing: 5px;">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="attemptLogin()" style="width: 100%;">Mở khóa</button>
+    <p id="login-error" style="color: var(--red); font-size: 12px; margin-top: 12px; display: none;">Sai mã! Vui lòng kiểm tra lại.</p>
+  </div>
+</div>
+
+<div class="layout" id="app-layout">
+  <!-- SIDEBAR (DESKTOP) -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">Ví Cá Nhân</div>
+      <div class="logo-sub">Đồng bộ Google Excel</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Tổng quan</div>
+      <button class="nav-item active" onclick="goTo('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>
+        Bảng điều khiển
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Thu chi</div>
+      <button class="nav-item" onclick="goTo('transactions')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10h14M3 6h14M3 14h8"/></svg>
+        Giao dịch
+      </button>
+      <button class="nav-item" onclick="goTo('add-tx')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M6 10h8"/></svg>
+        Thêm giao dịch
+      </button>
+      <button class="nav-item" onclick="goTo('budget')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M6 10h2m4 0h2M6 14h4"/></svg>
+        Ngân sách
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Tiết kiệm</div>
+      <button class="nav-item" onclick="goTo('savings')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z"/><path d="M7 10h6m-3-3v6"/></svg>
+        Kế hoạch tiết kiệm
+      </button>
+      <button class="nav-item" onclick="goTo('add-saving')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M6 10h8"/></svg>
+        Thêm mục tiêu
+      </button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Nợ & Vay</div>
+      <button class="nav-item" id="nav-debts" onclick="goTo('debts')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z"/><path d="M10 6v4l3 3"/></svg>
+        Quản lý nợ
+      </button>
+      <button class="nav-item" onclick="goTo('add-debt')">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10h16M10 2l-4 8h8l-4 8"/></svg>
+        Thêm khoản nợ
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-indicator"></div>
+        <span id="sync-text">Chế độ Offline</span>
+      </div>
+      <button class="btn-outline btn-sm" onclick="logout()" style="margin-top:8px; width: 100%; font-size: 11px;">🔒 Khóa ngay</button>
+    </div>
+  </aside>
+
+  <!-- BOTTOM NAV (MOBILE) -->
+  <nav class="bottom-nav">
+    <button class="nav-tab active" onclick="goTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Home
+    </button>
+    <button class="nav-tab" onclick="goTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      Sử
+    </button>
+    <button class="nav-tab" onclick="goTo('add-tx')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+      Thêm
+    </button>
+    <button class="nav-tab" onclick="goTo('savings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Quỹ
+    </button>
+    <button class="nav-tab" onclick="goTo('debts')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z"/><path d="M12 6v6l4 2"/></svg>
+      Nợ
+    </button>
+    <button class="nav-tab" onclick="logout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Khóa
+    </button>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="page-section active" id="sec-dashboard">
+      <div class="page-header">
+        <div class="page-title">Bảng điều khiển</div>
+        <div class="page-sub" id="dash-date"></div>
+      </div>
+
+      <div class="month-nav">
+        <button class="month-btn" onclick="changeMonth(-1)">&#8592;</button>
+        <span id="month-label"></span>
+        <button class="month-btn" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Thu nhập</div>
+          <div class="metric-value" id="m-income" style="color:var(--green);">0 ₫</div>
+          <div class="metric-sub" id="m-income-count"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Chi tiêu</div>
+          <div class="metric-value" id="m-expense" style="color:var(--red);">0 ₫</div>
+          <div class="metric-sub" id="m-expense-count"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Số dư tháng</div>
+          <div class="metric-value" id="m-balance">0 ₫</div>
+          <div class="metric-sub" id="m-balance-sub"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Chi tiêu theo danh mục</div>
+          <div class="chart-wrap"><canvas id="catChart" role="img" aria-label="Biểu đồ chi tiêu theo danh mục">Biểu đồ tròn chi tiêu.</canvas></div>
+          <div class="legend" id="cat-legend"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Xu hướng 6 tháng</div>
+          <div class="chart-wrap"><canvas id="trendChart" role="img" aria-label="Biểu đồ thu chi 6 tháng">Thu chi 6 tháng.</canvas></div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#2D6A4F;"></div>Thu nhập</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#E24B4A;"></div>Chi tiêu</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Giao dịch gần đây</div>
+          <ul class="tx-list" id="recent-list"></ul>
+          <div style="margin-top:10px;text-align:center;">
+            <button class="btn-outline btn" style="font-size:13px;padding:7px 16px;" onclick="goTo('transactions')">Xem tất cả</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Nợ đang theo dõi</div>
+          <div id="dash-debts"></div>
+          <div style="margin-top:10px;text-align:center;">
+            <button class="btn-outline btn" style="font-size:13px;padding:7px 16px;" onclick="goTo('debts')">Quản lý nợ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TRANSACTIONS ===== -->
+    <div class="page-section" id="sec-transactions">
+      <div class="page-header">
+        <div class="page-title">Lịch sử giao dịch</div>
+        <div class="page-sub">Tất cả thu chi của bạn</div>
+      </div>
+      <div class="card">
+        <div class="filter-row">
+          <input type="text" id="search-tx" class="form-input" placeholder="Tìm kiếm tên giao dịch..." oninput="renderTxList()">
+          <select class="form-input form-select" id="f-type" onchange="renderTxList()">
+            <option value="all">Tất cả loại</option>
+            <option value="income">Thu nhập</option>
+            <option value="expense">Chi tiêu</option>
+          </select>
+          <select class="form-input form-select" id="f-cat" onchange="renderTxList()">
+            <option value="all">Mọi danh mục</option>
+          </select>
+          <select class="form-input form-select" id="f-month" onchange="renderTxList()">
+            <option value="all">Mọi tháng</option>
+          </select>
+        </div>
+        <div id="filter-summary-bar" class="filter-summary"></div>
+        <ul class="tx-list" id="tx-full-list"></ul>
+        <div id="tx-empty" class="empty" style="display:none;">Không tìm thấy giao dịch nào</div>
+      </div>
+    </div>
+
+    <!-- ===== ADD TRANSACTION ===== -->
+    <div class="page-section" id="sec-add-tx">
+      <div class="page-header">
+        <div class="page-title">Thêm giao dịch</div>
+        <div class="page-sub">Ghi lại thu nhập hoặc chi tiêu</div>
+      </div>
+      <div class="card" style="max-width:560px;">
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Loại</label>
+            <select class="form-input form-select" id="tx-type" onchange="updateTxCats()">
+              <option value="expense">Chi tiêu</option>
+              <option value="income">Thu nhập</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Danh mục</label>
+            <select class="form-input form-select" id="tx-cat"></select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Số tiền (₫)</label>
+            <input class="form-input money-input" type="text" id="tx-amount" placeholder="Nhập 50 -> 50.000" inputmode="decimal">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày</label>
+            <input class="form-input" type="date" id="tx-date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ghi chú</label>
+          <input class="form-input" type="text" id="tx-note" placeholder="Mô tả giao dịch...">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addTransaction()">Thêm giao dịch</button>
+        </div>
+        <div id="tx-success" style="display:none;margin-top:12px;padding:10px 14px;background:var(--green-bg);color:var(--green);border-radius:var(--radius-sm);font-size:14px;">
+          ✓ Đã thêm giao dịch thành công!
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BUDGET ===== -->
+    <div class="page-section" id="sec-budget">
+      <div class="page-header">
+        <div class="page-title">Ngân sách</div>
+        <div class="page-sub">Theo dõi giới hạn chi tiêu theo danh mục</div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Đặt ngân sách tháng</div>
+          <div class="form-group">
+            <label class="form-label">Danh mục</label>
+            <select class="form-input form-select" id="budget-cat">
+              <option>Ăn uống</option><option>Di chuyển</option><option>Mua sắm</option>
+              <option>Giải trí</option><option>Sức khỏe</option><option>Giáo dục</option>
+              <option>Hoá đơn</option><option>Khác</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngân sách (₫/tháng)</label>
+            <input class="form-input money-input" type="text" id="budget-amount" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="setBudget()">Lưu ngân sách</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tháng này</div>
+          <div id="budget-list"><div class="empty">Chưa đặt ngân sách</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SAVINGS ===== -->
+    <div class="page-section" id="sec-savings">
+      <div class="page-header">
+        <div class="page-title">Kế hoạch tiết kiệm</div>
+        <div class="page-sub">Tích lũy cho những mục tiêu tương lai</div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Tổng tích lũy</div>
+          <div class="metric-value" id="sm-total" style="color:var(--green);">0 ₫</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Mục tiêu xa nhất</div>
+          <div class="metric-value" id="sm-furthest" style="font-size:18px; margin-top:8px;">---</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Số mục tiêu</div>
+          <div class="metric-value" id="sm-count">0</div>
+        </div>
+      </div>
+      <div id="savings-list"></div>
+    </div>
+
+    <!-- ===== ADD SAVING ===== -->
+    <div class="page-section" id="sec-add-saving">
+      <div class="page-header">
+        <div class="page-title">Thêm mục tiêu tiết kiệm</div>
+      </div>
+      <div class="card" style="max-width:560px;">
+        <div class="form-group">
+          <label class="form-label">Tên mục tiêu</label>
+          <input class="form-input" type="text" id="s-name" placeholder="Vd: Mua Macbook, Đi Nhật...">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Số tiền cần đạt (₫)</label>
+            <input class="form-input money-input" type="text" id="s-target" inputmode="decimal">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số dư ban đầu (₫)</label>
+            <input class="form-input money-input" type="text" id="s-current" value="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày dự kiến đạt được</label>
+          <input class="form-input" type="date" id="s-due">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addSaving()">Tạo mục tiêu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DEBTS ===== -->
+    <div class="page-section" id="sec-debts">
+      <div class="page-header">
+        <div class="page-title">Quản lý nợ</div>
+        <div class="page-sub">Theo dõi các khoản vay và cho mượn</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Tôi đang nợ</div>
+          <div class="metric-value" id="dm-owe" style="color:var(--red);">0 ₫</div>
+          <div class="metric-sub" id="dm-owe-c"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Người khác nợ tôi</div>
+          <div class="metric-value" id="dm-lend" style="color:var(--green);">0 ₫</div>
+          <div class="metric-sub" id="dm-lend-c"></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Quá hạn</div>
+          <div class="metric-value" id="dm-overdue" style="color:var(--amber);">0</div>
+          <div class="metric-sub">khoản quá hạn</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <select class="form-input form-select" id="df-type" onchange="renderDebtList()" style="width:auto;">
+          <option value="all">Tất cả</option>
+          <option value="owe">Tôi đang nợ</option>
+          <option value="lend">Người nợ tôi</option>
+        </select>
+        <select class="form-input form-select" id="df-status" onchange="renderDebtList()" style="width:auto;">
+          <option value="active">Đang mở</option>
+          <option value="done">Đã xong</option>
+          <option value="all">Tất cả</option>
+        </select>
+      </div>
+
+      <div id="debt-list"></div>
+    </div>
+
+    <!-- ===== ADD DEBT ===== -->
+    <div class="page-section" id="sec-add-debt">
+      <div class="page-header">
+        <div class="page-title">Thêm khoản nợ</div>
+        <div class="page-sub">Ghi lại khoản vay hoặc cho mượn</div>
+      </div>
+      <div class="card" style="max-width:560px;">
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Loại</label>
+            <select class="form-input form-select" id="d-type">
+              <option value="owe">Tôi nợ người khác</option>
+              <option value="lend">Người khác nợ tôi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tên / Mô tả</label>
+            <input class="form-input" type="text" id="d-name" placeholder="Vd: Vay mua xe">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Người liên quan</label>
+            <input class="form-input" type="text" id="d-person" placeholder="Tên người vay/cho vay">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tổng số tiền (₫)</label>
+            <input class="form-input money-input" type="text" id="d-total" placeholder="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Lãi suất (%/năm)</label>
+            <input class="form-input" type="number" id="d-interest" placeholder="0" min="0" step="0.1" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày hạn trả</label>
+            <input class="form-input" type="date" id="d-due">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ghi chú</label>
+          <input class="form-input" type="text" id="d-note" placeholder="Ghi chú thêm...">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addDebt()">Thêm khoản nợ</button>
+        </div>
+        <div id="debt-success" style="display:none;margin-top:12px;padding:10px 14px;background:var(--green-bg);color:var(--green);border-radius:var(--radius-sm);font-size:14px;">
+          ✓ Đã thêm khoản nợ thành công!
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-bg" id="pay-modal">
+  <div class="modal">
+    <div class="modal-title" id="pay-modal-title">Ghi nhận thanh toán</div>
+    <div class="form-group">
+      <label class="form-label">Số tiền (₫)</label>
+      <input class="form-input money-input" type="text" id="pay-amount" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ngày</label>
+      <input class="form-input" type="date" id="pay-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ghi chú</label>
+      <input class="form-input" type="text" id="pay-note" placeholder="Chuyển khoản / Tiền mặt...">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closePayModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="confirmPayment()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVING ACTION MODAL -->
+<div class="modal-bg" id="saving-modal">
+  <div class="modal">
+    <div class="modal-title" id="saving-modal-title">Gửi tiền vào quỹ</div>
+    <div class="form-group">
+      <label class="form-label">Số tiền (₫)</label>
+      <input class="form-input money-input" type="text" id="saving-action-amount" inputmode="decimal">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeSavingModal()">Huỷ</button>
+      <button class="btn btn-primary" onclick="confirmSavingAction()">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-bg" id="del-modal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-title">Xác nhận xoá</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:1.25rem;" id="del-msg">Bạn có chắc muốn xoá?</p>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeDelModal()">Huỷ</button>
+      <button class="btn" style="background:var(--red);color:white;" onclick="confirmDelete()">Xoá</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────
+const scriptURL = 'https://script.google.com/macros/s/AKfycbx19Kjdw6WYVoHvGKd1gFOyfxcdX3U0w6B-hITpbJOfiN24bFbqd3QgkQ8B1adOq5sSuw/exec';
+let SECURITY_TOKEN = localStorage.getItem('vi_security_token') || '';
+
+// ─── DATA ────────────────────────────────────────────────
+let transactions = JSON.parse(localStorage.getItem('vi_txs') || '[]');
+let budgets = JSON.parse(localStorage.getItem('vi_budgets') || '{}');
+let debts = JSON.parse(localStorage.getItem('vi_debts') || '[]');
+let savings = JSON.parse(localStorage.getItem('vi_savings') || '[]');
+let currentMonth = new Date();
+let activeDebtId = null, activeSavingId = null, savingActionType = 'deposit', deleteTarget = null;
+
+const EXPENSE_CATS = ['Ăn uống','Di chuyển','Mua sắm','Giải trí','Sức khỏe','Giáo dục','Hoá đơn','Khác'];
+const INCOME_CATS  = ['Lương','Thưởng','Đầu tư','Freelance','Kinh doanh','Khác'];
+const CAT_ICONS    = {'Ăn uống':'🍜','Di chuyển':'🛵','Mua sắm':'🛍','Giải trí':'🎮','Sức khỏe':'💊','Giáo dục':'📚','Hoá đơn':'💡','Lương':'💼','Thưởng':'🎁','Đầu tư':'📈','Freelance':'💻','Kinh doanh':'🏪','Khác':'💰'};
+const COLORS       = ['#2D6A4F','#A02C2C','#1A4A7A','#7A4F1A','#5C3D8F','#3D6B8F','#8F3D5C','#5C8F3D','#8F6B3D'];
+
+// ─── NOTIFICATION (TOAST) ────────────────────────────────
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ─── LOGIN LOGIC ─────────────────────────────────────────
+async function attemptLogin() {
+  const input = document.getElementById('access-token').value;
+  if (!input) return;
+  SECURITY_TOKEN = input;
+  const btn = document.getElementById('login-btn');
+  btn.innerText = 'Đang kiểm tra...';
+  try {
+    const res = await fetch(`${scriptURL}?action=get&token=${SECURITY_TOKEN}`);
+    const text = await res.text();
+    if (text.includes("Truy cập bị từ chối")) {
+      document.getElementById('login-error').style.display = 'block';
+      btn.innerText = 'Mở khóa';
+    } else {
+      localStorage.setItem('vi_security_token', SECURITY_TOKEN);
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-layout').classList.add('unlocked');
+      const data = JSON.parse(text);
+      if (data && data.transactions) {
+        transactions = data.transactions; budgets = data.budgets || {}; debts = data.debts || []; savings = data.savings || [];
+        saveToLocal();
+      }
+      renderDashboard();
+      showToast('Chào mừng bro trở lại!');
+    }
+  } catch (e) { btn.innerText = 'Lỗi mạng!'; }
+}
+document.getElementById('access-token').addEventListener('keypress', e => { if(e.key === 'Enter') attemptLogin(); });
+
+function logout() {
+  localStorage.removeItem('vi_security_token');
+  location.reload();
+}
+
+// ─── SMART MONEY ─────────────────────────────────────────
+document.querySelectorAll('.money-input').forEach(input => {
+  input.addEventListener('input', function() {
+    let val = this.value.replace(/\./g, '');
+    if (!isNaN(val) && val !== '') this.value = new Intl.NumberFormat('vi-VN').format(val);
+  });
+});
+function getMoneyValue(id) {
+  let val = document.getElementById(id).value.replace(/\./g, '');
+  let num = parseFloat(val) || 0;
+  return (num > 0 && num < 1000) ? num * 1000 : num;
+}
+
+// ─── SYNC LOGIC ──────────────────────────────────────────
+function updateSyncStatus(status) {
+  const dot = document.getElementById('sync-indicator'), txt = document.getElementById('sync-text');
+  if(!dot || !txt) return;
+  dot.className = 'sync-dot ' + status;
+  txt.innerText = status === 'online' ? 'Đã lưu Excel' : status === 'syncing' ? 'Đang gửi...' : 'Lỗi kết nối';
+}
+function saveToLocal() {
+  localStorage.setItem('vi_txs', JSON.stringify(transactions)); localStorage.setItem('vi_budgets', JSON.stringify(budgets));
+  localStorage.setItem('vi_debts', JSON.stringify(debts)); localStorage.setItem('vi_savings', JSON.stringify(savings));
+}
+async function saveAll() {
+  saveToLocal(); updateSyncStatus('syncing');
+  try {
+    await fetch(`${scriptURL}?action=save&token=${SECURITY_TOKEN}`, { method: 'POST', body: JSON.stringify({transactions, budgets, debts, savings}), headers: { 'Content-Type': 'text/plain' } });
+    updateSyncStatus('online');
+  } catch (e) { updateSyncStatus('error'); }
+}
+
+async function loadDataFromExcel() {
+  if (!SECURITY_TOKEN) return;
+  updateSyncStatus('syncing');
+  try {
+    const response = await fetch(`${scriptURL}?action=get&token=${SECURITY_TOKEN}`);
+    const data = await response.json();
+    if (data && data.transactions) {
+      transactions = data.transactions; budgets = data.budgets || {}; debts = data.debts || []; savings = data.savings || [];
+      updateSyncStatus('online'); renderDashboard();
+    }
+  } catch (e) { updateSyncStatus('error'); }
+}
+
+// ─── CORE UTILS ──────────────────────────────────────────
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' ₫'; }
+function fmtShort(n) {
+  const a = Math.abs(n);
+  if(a>=1000000000) return (n/1000000000).toFixed(1)+'T';
+  if(a>=1000000) return (n/1000000).toFixed(1)+'M';
+  if(a>=1000) return (n/1000).toFixed(0)+'K';
+  return Math.round(n).toString();
+}
+function getMonthKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function getMonthLabel(d) { return 'Tháng '+(d.getMonth()+1)+' / '+d.getFullYear(); }
+function daysDiff(s) {
+  const a=new Date(); a.setHours(0,0,0,0);
+  const b=new Date(s); b.setHours(0,0,0,0);
+  return Math.round((b-a)/86400000);
+}
+function getPaid(d) { return (d.payments||[]).reduce((s,p)=>s+p.amount,0); }
+function getRemaining(d) { return Math.max(0, d.total - getPaid(d)); }
+
+// ─── NAVIGATION ──────────────────────────────────────────
+function goTo(page) {
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .nav-tab').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+page).classList.add('active');
+  document.querySelectorAll(`[onclick="goTo('${page}')"]`).forEach(el=>el.classList.add('active'));
+  if(page==='dashboard') renderDashboard();
+  if(page==='transactions') renderTxList();
+  if(page==='budget') renderBudget();
+  if(page==='savings') { renderSavingMetrics(); renderSavings(); }
+  if(page==='debts') { renderDebtMetrics(); renderDebtList(); }
+
+  const od = debts.filter(d=>!d.done&&d.due&&daysDiff(d.due)<0).length;
+  const navDebt = document.getElementById('nav-debts');
+  const dot = navDebt ? navDebt.querySelector('.notif-dot') : null;
+  if(od>0 && navDebt && !dot) navDebt.insertAdjacentHTML('beforeend','<span class="notif-dot"></span>');
+  if(od===0 && dot) dot.remove();
+}
+function changeMonth(d) { currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+d, 1); renderDashboard(); }
+
+// DASHBOARD
+let catChartInst = null, trendChartInst = null;
+function renderDashboard() {
+  document.getElementById('dash-date').innerText = new Date().toLocaleDateString('vi-VN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('month-label').innerText = getMonthLabel(currentMonth);
+  const mk = getMonthKey(currentMonth), mTxs = transactions.filter(t=>t.date.startsWith(mk));
+  const inc = mTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp = mTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal = inc - exp;
+  document.getElementById('m-income').innerText = fmt(inc);
+  document.getElementById('m-expense').innerText = fmt(exp);
+  document.getElementById('m-balance').innerText = fmt(bal);
+  document.getElementById('m-balance').style.color = bal>=0?'var(--green)':'var(--red)';
+  
+  const catMap = {}; mTxs.filter(t=>t.type==='expense').forEach(t=>{ catMap[t.cat]=(catMap[t.cat]||0)+t.amount; });
+  const cats = Object.keys(catMap);
+  if(catChartInst) catChartInst.destroy();
+  if(cats.length>0) {
+    catChartInst = new Chart(document.getElementById('catChart'), { type:'doughnut', data:{ labels:cats, datasets:[{ data:cats.map(c=>catMap[c]), backgroundColor:COLORS, borderWidth:2, borderColor:'#fff' }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'65%'} });
+    document.getElementById('cat-legend').innerHTML = cats.map((c,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${COLORS[i]}"></div>${c}</div>`).join('');
+  } else { document.getElementById('cat-legend').innerHTML = '<span style="color:var(--text3);font-size:13px;">Chưa có chi tiêu</span>'; }
+
+  const months=[],incD=[],expD=[];
+  for(let i=5;i>=0;i--) {
+    const d=new Date(currentMonth.getFullYear(),currentMonth.getMonth()-i,1), k=getMonthKey(d);
+    months.push('T'+(d.getMonth()+1));
+    const tx=transactions.filter(t=>t.date.startsWith(k));
+    incD.push(tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0));
+    expD.push(tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));
+  }
+  if(trendChartInst) trendChartInst.destroy();
+  trendChartInst = new Chart(document.getElementById('trendChart'), { type:'bar', data: { labels:months, datasets:[{label:'Thu nhập', data:incD, backgroundColor:'#2D6A4F', borderRadius:4},{label:'Chi tiêu', data:expD, backgroundColor:'#E24B4A', borderRadius:4}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>fmtShort(v)}}}} });
+
+  document.getElementById('recent-list').innerHTML = transactions.slice(0,6).map(t=>txItemHTML(t)).join('');
+  
+  const activeDebts = debts.filter(d=>!d.done).slice(0,4);
+  const dEl = document.getElementById('dash-debts');
+  if(activeDebts.length===0) { dEl.innerHTML='<div class="empty">Không có khoản nợ nào</div>'; }
+  else { dEl.innerHTML = activeDebts.map(d=>{
+    const rem = getRemaining(d), pct = Math.min(100,Math.round(getPaid(d)/d.total*100));
+    return `<div class="summary-row"><div><div style="font-size:14px;font-weight:500;">${d.name}</div><div style="font-size:12px;color:var(--text3);">${d.type==='owe'?'Tôi nợ':'Người nợ'}</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:500;color:${d.type==='owe'?'var(--red)':'var(--green)'};">${fmt(rem)}</div><div style="font-size:12px;color:var(--text3);">${pct}% xong</div></div></div>`;
+  }).join(''); }
+}
+
+function txItemHTML(t) {
+  const icon = CAT_ICONS[t.cat]||'💰', bg = t.type==='income'?'var(--green-bg)':'var(--red-bg)', amtColor = t.type==='income'?'var(--green)':'var(--red)';
+  return `<li class="tx-item"><div class="tx-icon" style="background:${bg};font-size:17px;">${icon}</div><div class="tx-info"><div class="tx-name">${t.note||t.cat}</div><div class="tx-meta">${t.cat} · ${t.date}</div></div><div class="tx-amount" style="color:${amtColor};">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div><button class="btn-sm btn-danger-sm" onclick="askDelete('tx',${t.id})" style="margin-left:6px;">✕</button></li>`;
+}
+
+function updateTxCats() {
+  const cats = document.getElementById('tx-type').value === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+  document.getElementById('tx-cat').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
+}
+
+function addTransaction() {
+  const amt = getMoneyValue('tx-amount'), type=document.getElementById('tx-type').value, cat=document.getElementById('tx-cat').value, date=document.getElementById('tx-date').value, note=document.getElementById('tx-note').value.trim();
+  if(amt <= 0 || !date) { showToast('Bro nhập thiếu thông tin rồi!', 'error'); return; }
+  transactions.unshift({ id:Date.now(), type, cat, amount:amt, date, note:note||cat });
+  saveAll(); renderDashboard(); document.getElementById('tx-amount').value=''; document.getElementById('tx-note').value='';
+  showToast('Đã thêm giao dịch thành công!');
+}
+
+function renderTxList() {
+  const ft=document.getElementById('f-type').value, query=document.getElementById('search-tx').value.toLowerCase();
+  let f = transactions;
+  if(ft!=='all') f=f.filter(t=>t.type===ft);
+  if(query) f=f.filter(t=> (t.note||'').toLowerCase().includes(query) || t.cat.toLowerCase().includes(query));
+  const total = f.reduce((s,t)=>s + (t.type==='income'?t.amount:-t.amount),0);
+  const bar = document.getElementById('filter-summary-bar');
+  if(query || ft!=='all') { bar.style.display='block'; bar.innerText=`Kết quả lọc: ${f.length} giao dịch · Tổng cộng: ${fmt(total)}`; } else { bar.style.display='none'; }
+  const list = document.getElementById('tx-full-list'), empty = document.getElementById('tx-empty');
+  if(f.length===0){ list.innerHTML=''; empty.style.display='block'; } else { empty.style.display='none'; list.innerHTML = f.map(t=>txItemHTML(t)).join(''); }
+}
+
+function setBudget() {
+  const amt = getMoneyValue('budget-amount'), cat = document.getElementById('budget-cat').value;
+  if(amt > 0) { budgets[cat] = amt; saveAll(); renderBudget(); showToast('Đã lưu ngân sách tháng!'); document.getElementById('budget-amount').value=''; }
+}
+function deleteBudget(cat) { delete budgets[cat]; saveAll(); renderBudget(); showToast('Đã xoá ngân sách!'); }
+function renderBudget() {
+  const mk = getMonthKey(new Date()), spent = {}; transactions.filter(t=>t.type==='expense'&&t.date.startsWith(mk)).forEach(t=>{ spent[t.cat]=(spent[t.cat]||0)+t.amount; });
+  const el = document.getElementById('budget-list');
+  if(Object.keys(budgets).length===0){ el.innerHTML='<div class="empty">Chưa đặt ngân sách</div>'; }
+  else { el.innerHTML = Object.keys(budgets).map(c=>{
+    const s=spent[c]||0, b=budgets[c], pct=Math.min(100,Math.round(s/b*100)), col=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+    return `<div class="budget-row"><div class="budget-cat">${CAT_ICONS[c]||'•'} ${c}</div><div class="budget-track"><div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${col};"></div></div><div style="font-size:11px;color:var(--text3);margin-top:3px;">${pct}% đã dùng</div></div><div class="budget-nums">${fmt(s)} / ${fmt(b)} <button class="btn-sm" onclick="deleteBudget('${c}')">✕</button></div></div>`;
+  }).join(''); }
+}
+
+// SAVINGS
+function addSaving() {
+  const name=document.getElementById('s-name').value.trim(), target=getMoneyValue('s-target'), current=getMoneyValue('s-current'), due=document.getElementById('s-due').value;
+  if(!name || target<=0) { showToast('Nhập đủ thông tin tiết kiệm bro!', 'error'); return; }
+  savings.unshift({ id:Date.now(), name, target, current, due });
+  saveAll(); goTo('savings'); showToast('Đã tạo mục tiêu tiết kiệm!');
+  ['s-name','s-target','s-current','s-due'].forEach(id=>document.getElementById(id).value='');
+}
+function renderSavingMetrics() {
+  document.getElementById('sm-total').innerText = fmt(savings.reduce((s,x)=>s+x.current,0));
+  document.getElementById('sm-count').innerText = savings.length;
+}
+function renderSavings() {
+  const el = document.getElementById('savings-list');
+  if(savings.length===0){ el.innerHTML='<div class="empty">Chưa có kế hoạch nào</div>'; }
+  else { el.innerHTML = savings.map(s=>{
+    const pct=Math.min(100, Math.round(s.current/s.target*100));
+    return `<div class="saving-card"><div class="saving-header"><strong>${s.name}</strong><div style="font-size:12px;color:var(--text3);">${s.due?'Hạn: '+s.due:''}</div></div><div class="saving-stats"><span>${fmt(s.current)} / ${fmt(s.target)}</span><span>${pct}%</span></div><div class="prog-wrap" style="margin-bottom:10px;"><div class="prog-bar" style="width:${pct}%;background:var(--green);"></div></div><div class="debt-footer"><div class="debt-actions"><button class="btn-sm btn-success-sm" onclick="openSavingModal(${s.id},'deposit')">+ Gửi</button><button class="btn-sm btn-danger-sm" onclick="askDelete('saving',${s.id})">✕</button></div></div></div>`;
+  }).join(''); }
+}
+function openSavingModal(id, type) { activeSavingId=id; savingActionType=type; document.getElementById('saving-modal-title').innerText=type==='deposit'?'Gửi thêm tiết kiệm':'Rút tiền tiết kiệm'; document.getElementById('saving-action-amount').value=''; document.getElementById('saving-modal').classList.add('show'); }
+function closeSavingModal() { document.getElementById('saving-modal').classList.remove('show'); }
+function confirmSavingAction() {
+  const amt=getMoneyValue('saving-action-amount'), s=savings.find(x=>x.id===activeSavingId);
+  if(amt>0) { s.current+=amt; saveAll(); closeSavingModal(); renderSavings(); renderSavingMetrics(); showToast('Đã cập nhật quỹ!'); }
+}
+
+// DEBTS
+function addDebt() {
+  const amt=getMoneyValue('d-total'), name=document.getElementById('d-name').value.trim(), due=document.getElementById('d-due').value;
+  if(!name || amt<=0) { showToast('Nhập thiếu tên hoặc tiền rồi!', 'error'); return; }
+  debts.unshift({ id:Date.now(), type:document.getElementById('d-type').value, name, total:amt, payments:[], done:false, due });
+  saveAll(); goTo('debts'); showToast('Đã thêm khoản nợ mới!');
+  ['d-name','d-total','d-due'].forEach(id=>document.getElementById(id).value='');
+}
+function renderDebtMetrics() {
+  const owe=debts.filter(d=>d.type==='owe'&&!d.done).reduce((s,d)=>s+getRemaining(d),0);
+  const lend=debts.filter(d=>d.type==='lend'&&!d.done).reduce((s,d)=>s+getRemaining(d),0);
+  document.getElementById('dm-owe').innerText = fmt(owe); document.getElementById('dm-lend').innerText = fmt(lend);
+  document.getElementById('dm-overdue').innerText = debts.filter(d=>!d.done&&d.due&&daysDiff(d.due)<0).length;
+}
+function renderDebtList() {
+  const ft=document.getElementById('df-type').value, fs=document.getElementById('df-status').value;
+  let f = debts;
+  if(ft!=='all') f=f.filter(d=>d.type===ft);
+  if(fs==='active') f=f.filter(d=>!d.done); else if(fs==='done') f=f.filter(d=>d.done);
+  const el = document.getElementById('debt-list');
+  if(f.length===0){ el.innerHTML='<div class="empty">Không có khoản nợ nào</div>'; }
+  else { el.innerHTML = f.map(d=>`
+    <div class="debt-card"><div class="debt-header"><strong>${d.name}</strong><span class="badge ${d.done?'badge-done':d.type==='owe'?'badge-owe':'badge-lend'}">${d.done?'Đã xong':d.type==='owe'?'Tôi nợ':'Cho vay'}</span></div><div class="debt-amounts"><div>Còn: ${fmt(getRemaining(d))}</div><div>Gốc: ${fmt(d.total)}</div></div><div class="prog-wrap" style="margin-bottom:6px;"><div class="prog-bar" style="width:${Math.min(100,Math.round(getPaid(d)/d.total*100))}%;background:${d.done?'var(--green)':'var(--accent)'};"></div></div><div class="debt-footer"><div class="debt-actions">${!d.done?`<button class="btn-sm btn-success-sm" onclick="openPayModal(${d.id})">+ Trả nợ</button>`:''} <button class="btn-sm btn-danger-sm" onclick="askDelete('debt',${d.id})">✕</button></div></div></div>`).join(''); }
+}
+function openPayModal(id) { activeDebtId=id; document.getElementById('pay-modal-title').innerText='Ghi nhận trả nợ'; document.getElementById('pay-amount').value=''; document.getElementById('pay-modal').classList.add('show'); }
+function closePayModal() { document.getElementById('pay-modal').classList.remove('show'); }
+function confirmPayment() {
+  const amt=getMoneyValue('pay-amount'), d=debts.find(x=>x.id===activeDebtId);
+  if(amt>0) { d.payments.push({amount:amt, date:new Date().toISOString()}); if(getPaid(d)>=d.total) d.done=true; saveAll(); closePayModal(); renderDebtList(); renderDebtMetrics(); showToast('Đã ghi nhận trả nợ!'); }
+}
+
+function askDelete(type, id) { deleteTarget={type,id}; document.getElementById('del-modal').classList.add('show'); }
+function closeDelModal() { document.getElementById('del-modal').classList.remove('show'); }
+function confirmDelete() {
+  if(deleteTarget.type==='tx') transactions=transactions.filter(t=>t.id!==deleteTarget.id);
+  else if(deleteTarget.type==='debt') debts=debts.filter(d=>d.id!==deleteTarget.id);
+  else if(deleteTarget.type==='saving') savings=savings.filter(s=>s.id!==deleteTarget.id);
+  saveAll(); renderDashboard(); renderTxList(); renderDebtList(); renderSavings(); renderDebtMetrics(); renderSavingMetrics(); closeDelModal(); showToast('Đã xoá thành công!');
+}
+
+// INIT
+document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
+updateTxCats();
+if (SECURITY_TOKEN) { document.getElementById('login-screen').style.display='none'; document.getElementById('app-layout').classList.add('unlocked'); renderDashboard(); loadDataFromExcel(); }
+document.getElementById('pay-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closePayModal(); });
+document.getElementById('saving-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeSavingModal(); });
+document.getElementById('del-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeDelModal(); });
+</script>
+</body>
+</html>
